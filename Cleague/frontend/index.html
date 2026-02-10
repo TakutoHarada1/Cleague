@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>セ・リーグ順位推移グラフ</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>セ・リーグ順位推移グラフ</h1>
+        </header>
+        
+        <main>
+            <div id="loading" class="loading hidden">
+                <p>データを読み込み中...</p>
+            </div>
+            
+            <div id="error" class="error hidden"></div>
+            
+            <div class="chart-container">
+                <canvas id="standingsChart"></canvas>
+            </div>
+        </main>
+    </div>
+    
+    <!-- JavaScript modules -->
+    <script src="js/utils.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/chart.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>

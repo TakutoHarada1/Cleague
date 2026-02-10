@@ -1,0 +1,408 @@
+openapi: 3.0.3
+info:
+  title: セ・リーグ順位推移グラフ API
+  description: |
+    日本プロ野球セ・リーグの順位推移データを提供するAPI。
+    Webスクレイピングにより最新の順位データを取得し、JSON形式で返却します。
+  version: 1.0.0
+  contact:
+    name: Cleague Project
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:5000/api
+    description: ローカル開発環境
+  - url: https://cleague.vercel.app/api
+    description: 本番環境
+
+tags:
+  - name: standings
+    description: 順位データ関連のエンドポイント
+  - name: teams
+    description: 球団情報関連のエンドポイント
+
+paths:
+  /standings:
+    get:
+      tags:
+        - standings
+      summary: 順位推移データを取得
+      description: |
+        指定された期間のセ・リーグ順位推移データを取得します。
+        パラメータ未指定の場合は、現在年のシーズン開始から現在日までのデータを返します。
+      operationId: getStandings
+      parameters:
+        - name: year
+          in: query
+          description: 年度（例：2026）
+          required: false
+          schema:
+            type: integer
+            minimum: 1950
+            maximum: 2100
+            example: 2026
+        - name: startMonth
+          in: query
+          description: 開始月（1-12）
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 12
+            example: 7
+        - name: endMonth
+          in: query
+          description: 終了月（1-12、startMonth以降）
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 12
+            example: 9
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandingsResponse'
+              examples:
+                fullSeason:
+                  summary: シーズン全体のデータ
+                  value:
+                    period:
+                      year: 2026
+                      startDate: "2026-03-20"
+                      endDate: "2026-10-10"
+                      startMonth: null
+                      endMonth: null
+                    data:
+                      - date: "2026-03-20"
+                        teamId: "giants"
+                        rank: 1
+                        wins: 1
+                        losses: 0
+                        draws: 0
+                        winRate: 1.000
+                        gamesBehind: 0.0
+                      - date: "2026-03-20"
+                        teamId: "tigers"
+                        rank: 2
+                        wins: 0
+                        losses: 1
+                        draws: 0
+                        winRate: 0.000
+                        gamesBehind: 1.0
+                partialSeason:
+                  summary: 期間指定のデータ
+                  value:
+                    period:
+                      year: 2026
+                      startDate: "2026-07-01"
+                      endDate: "2026-09-30"
+                      startMonth: 7
+                      endMonth: 9
+                    data:
+                      - date: "2026-07-01"
+                        teamId: "giants"
+                        rank: 1
+                        wins: 50
+                        losses: 30
+                        draws: 2
+                        winRate: 0.625
+                        gamesBehind: 0.0
+        '400':
+          description: 無効なパラメータ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalidMonth:
+                  summary: 無効な月指定
+                  value:
+                    error:
+                      code: "INVALID_PARAMETER"
+                      message: "開始月は終了月より前である必要があります"
+                      details: "startMonth=10, endMonth=7"
+                outOfRange:
+                  summary: 範囲外の値
+                  value:
+                    error:
+                      code: "INVALID_PARAMETER"
+                      message: "月の指定が1〜12の範囲外です"
+                      details: "startMonth=13"
+        '404':
+          description: データが存在しない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                noData:
+                  summary: データ未存在
+                  value:
+                    error:
+                      code: "NOT_FOUND"
+                      message: "指定された年度のデータは存在しません"
+                      details: "year=2030"
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                scrapingFailed:
+                  summary: スクレイピング失敗
+                  value:
+                    error:
+                      code: "SCRAPING_FAILED"
+                      message: "データの取得に失敗しました"
+                      details: "Connection timeout to npb.jp"
+
+  /teams:
+    get:
+      tags:
+        - teams
+      summary: 球団情報を取得
+      description: セ・リーグ全6球団の情報を取得します。
+      operationId: getTeams
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Team'
+              example:
+                - id: "giants"
+                  name: "読売ジャイアンツ"
+                  shortName: "巨人"
+                  color: "#FF6600"
+                  league: "central"
+                - id: "tigers"
+                  name: "阪神タイガース"
+                  shortName: "阪神"
+                  color: "#FFE600"
+                  league: "central"
+                - id: "dragons"
+                  name: "中日ドラゴンズ"
+                  shortName: "中日"
+                  color: "#0057B8"
+                  league: "central"
+                - id: "carp"
+                  name: "広島東洋カープ"
+                  shortName: "広島"
+                  color: "#FF0000"
+                  league: "central"
+                - id: "baystars"
+                  name: "横浜DeNAベイスターズ"
+                  shortName: "DeNA"
+                  color: "#6A4C9C"
+                  league: "central"
+                - id: "swallows"
+                  name: "東京ヤクルトスワローズ"
+                  shortName: "ヤクルト"
+                  color: "#00A650"
+                  league: "central"
+
+  /health:
+    get:
+      tags:
+        - system
+      summary: ヘルスチェック
+      description: APIサーバーの稼働状況を確認します。
+      operationId: healthCheck
+      responses:
+        '200':
+          description: 正常稼働中
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ok"
+                  timestamp:
+                    type: string
+                    format: date-time
+                    example: "2026-02-10T12:00:00Z"
+
+components:
+  schemas:
+    Team:
+      type: object
+      required:
+        - id
+        - name
+        - shortName
+        - color
+        - league
+      properties:
+        id:
+          type: string
+          description: 球団の一意識別子
+          example: "giants"
+        name:
+          type: string
+          description: 球団の正式名称
+          example: "読売ジャイアンツ"
+        shortName:
+          type: string
+          description: 球団の略称
+          example: "巨人"
+        color:
+          type: string
+          description: 球団カラー（HEX形式）
+          pattern: '^#[0-9A-F]{6}$'
+          example: "#FF6600"
+        league:
+          type: string
+          description: 所属リーグ
+          enum:
+            - central
+            - pacific
+          example: "central"
+
+    StandingsData:
+      type: object
+      required:
+        - date
+        - teamId
+        - rank
+        - wins
+        - losses
+        - draws
+        - winRate
+        - gamesBehind
+      properties:
+        date:
+          type: string
+          format: date
+          description: 日付（ISO 8601形式）
+          example: "2026-05-15"
+        teamId:
+          type: string
+          description: 球団ID
+          example: "giants"
+        rank:
+          type: integer
+          description: 順位（1-6）
+          minimum: 1
+          maximum: 6
+          example: 1
+        wins:
+          type: integer
+          description: 勝数
+          minimum: 0
+          example: 35
+        losses:
+          type: integer
+          description: 敗数
+          minimum: 0
+          example: 20
+        draws:
+          type: integer
+          description: 引分数
+          minimum: 0
+          example: 2
+        winRate:
+          type: number
+          format: float
+          description: 勝率（0.000-1.000）
+          minimum: 0.0
+          maximum: 1.0
+          example: 0.636
+        gamesBehind:
+          type: number
+          format: float
+          description: ゲーム差（首位からの差）
+          minimum: 0.0
+          example: 0.0
+
+    PeriodSettings:
+      type: object
+      required:
+        - year
+        - startDate
+        - endDate
+      properties:
+        year:
+          type: integer
+          description: 年度
+          minimum: 1950
+          maximum: 2100
+          example: 2026
+        startDate:
+          type: string
+          format: date
+          description: 開始日（ISO 8601形式）
+          example: "2026-03-20"
+        endDate:
+          type: string
+          format: date
+          description: 終了日（ISO 8601形式）
+          example: "2026-10-10"
+        startMonth:
+          type: integer
+          nullable: true
+          description: 開始月（1-12、オプション）
+          minimum: 1
+          maximum: 12
+          example: null
+        endMonth:
+          type: integer
+          nullable: true
+          description: 終了月（1-12、オプション）
+          minimum: 1
+          maximum: 12
+          example: null
+
+    StandingsResponse:
+      type: object
+      required:
+        - period
+        - data
+      properties:
+        period:
+          $ref: '#/components/schemas/PeriodSettings'
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/StandingsData'
+          description: 順位データの配列（日付×球団）
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          required:
+            - code
+            - message
+          properties:
+            code:
+              type: string
+              description: エラーコード
+              enum:
+                - INVALID_PARAMETER
+                - NOT_FOUND
+                - SCRAPING_FAILED
+                - PARSE_ERROR
+                - INTERNAL_ERROR
+              example: "SCRAPING_FAILED"
+            message:
+              type: string
+              description: エラーメッセージ（ユーザー向け）
+              example: "データの取得に失敗しました"
+            details:
+              type: string
+              description: エラー詳細（デバッグ用）
+              example: "Connection timeout to npb.jp"
